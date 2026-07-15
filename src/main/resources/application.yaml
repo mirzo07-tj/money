@@ -1,0 +1,34 @@
+server:
+  port: 8081
+
+#debug: true
+jwt:
+  secret: "ZmFrZS1zZWNyZXQta2V5LWZvci1kZXYtb25seS1jaGFuZ2UtaW4tcHJvZC0xMjM0NTY3ODkw"
+  expiration-ms: 900000
+  refresh-expiration-ms: 604800000
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5555/money
+    username: postgres
+    password: 2552
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate   # Flyway управляет схемой, Hibernate только проверяет
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+
+logging:
+  level:
+    root: INFO
+    com.bank.money: DEBUG
+    org.hibernate: WARN
+    org.springframework: WARN
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/money-app.log
