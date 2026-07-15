@@ -2,6 +2,7 @@ server:
   port: 8081
 
 #debug: true
+#debug: true
 jwt:
   secret: "ZmFrZS1zZWNyZXQta2V5LWZvci1kZXYtb25seS1jaGFuZ2UtaW4tcHJvZC0xMjM0NTY3ODkw"
   expiration-ms: 900000
