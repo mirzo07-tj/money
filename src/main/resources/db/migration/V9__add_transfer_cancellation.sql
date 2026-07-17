@@ -1,0 +1,3 @@
+ALTER TABLE transfers ADD COLUMN cancelled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE transfers ADD COLUMN cancelled_at TIMESTAMP;
+ALTER TABLE transfers ADD COLUMN reversal_of_id BIGINT REFERENCES transfers(id);

@@ -1,5 +1,6 @@
 package com.bank.money.service;
 
+import com.bank.money.dto.BalanceResponse;
 import com.bank.money.dto.BankAccountResponse;
 import com.bank.money.dto.CreateAccountRequest;
 import com.bank.money.dto.RecipientInfoResponse;
@@ -58,6 +59,7 @@ public class BankAccountService {
         }
         return username.substring(0, 2) + "***";
     }
+
     public List<BankAccountResponse> getAccountsForUser(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
@@ -163,6 +165,21 @@ public class BankAccountService {
         return toResponse(saved);
     }
 
+    public BalanceResponse getBalance(String username, Long accountId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
+
+        BankAccount account = bankAccountRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Счёт не найден: id=" + accountId));
+
+        if (!account.getOwner().getId().equals(user.getId())) {
+            log.warn("Попытка узнать баланс чужого счёта: username={}, accountId={}", username, accountId);
+            throw new AccessDeniedException("Нет доступа к этому счёту");
+        }
+
+        return new BalanceResponse(account.getAccountNumber(), account.getBalance(), account.getCurrency());
+    }
+
     @Transactional
     public BankAccountResponse unblockAccount(String username, Long accountId) {
         User user = userRepository.findByUsername(username)
@@ -214,3 +231,4 @@ public class BankAccountService {
         );
     }
 }
+

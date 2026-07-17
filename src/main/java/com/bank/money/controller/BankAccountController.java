@@ -1,9 +1,6 @@
 package com.bank.money.controller;
 
-import com.bank.money.dto.BankAccountResponse;
-import com.bank.money.dto.CreateAccountRequest;
-import com.bank.money.dto.RecipientInfoResponse;
-import com.bank.money.dto.UpdateAccountStatusRequest;
+import com.bank.money.dto.*;
 import com.bank.money.service.BankAccountService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -60,6 +57,17 @@ public class BankAccountController {
         BankAccountResponse response = bankAccountService.blockAccount(authentication.getName(), id);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{id}/balance")
+    @Operation(summary = "Получить текущий баланс счёта")
+    public ResponseEntity<BalanceResponse> getBalance(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        BalanceResponse response = bankAccountService.getBalance(authentication.getName(), id);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/lookup")
     @Operation(summary = "Проверить существование получателя по номеру счёта перед переводом")
     public ResponseEntity<RecipientInfoResponse> lookupRecipient(
@@ -68,6 +76,7 @@ public class BankAccountController {
         RecipientInfoResponse response = bankAccountService.getRecipientInfo(accountNumber);
         return ResponseEntity.ok(response);
     }
+
     @PatchMapping("/{id}/close")
     @Operation(summary = "Закрыть счёт")
     public ResponseEntity<BankAccountResponse> closeAccount(
@@ -89,6 +98,7 @@ public class BankAccountController {
                 authentication.getName(), id, request.getStatus());
         return ResponseEntity.ok(response);
     }
+
     @PatchMapping("/{id}/unblock")
     @Operation(summary = "Разблокировать счёт")
     public ResponseEntity<BankAccountResponse> unblockAccount(

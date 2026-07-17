@@ -61,6 +61,7 @@ public class UserService {
 
         return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getCreatedAt(), roleNames);
     }
+
     public UserResponse updateUserRoles(Long userId, Set<String> roleNames) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: id=" + userId));

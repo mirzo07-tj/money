@@ -38,6 +38,18 @@ public class Transfer {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private boolean cancelled = false;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    // Если этот Transfer сам является реверсом другого перевода —
+    // тут будет ссылка на оригинал. У обычных переводов это поле null.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reversal_of_id")
+    private Transfer reversalOf;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = Instant.now();

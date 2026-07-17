@@ -17,4 +17,7 @@ public class TransferResponse {
     private Currency currency;
     private String description;
     private Instant createdAt;
+    private boolean cancelled;
+    private Instant cancelledAt;
+    private Long reversalOfId; // id перевода, который этот перевод отменяет (null, если это не реверс)
 }
