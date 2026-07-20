@@ -42,6 +42,10 @@ public class BankAccount {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();
@@ -51,6 +55,7 @@ public class BankAccount {
             this.accountNumber = generateAccountNumber();
         }
     }
+
     public void debit(BigDecimal amount) {
         if (this.balance.compareTo(amount) < 0) {
             throw new IllegalStateException("Недостаточно средств на счёте");
@@ -68,8 +73,6 @@ public class BankAccount {
     }
 
     private String generateAccountNumber() {
-        // Простой вариант: 16 цифр на основе UUID.
-        // Позже можно заменить на более "банковский" формат (IBAN-подобный).
         return UUID.randomUUID().toString().replace("-", "")
                 .substring(0, 16)
                 .toUpperCase();
