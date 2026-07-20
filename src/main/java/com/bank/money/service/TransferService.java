@@ -5,10 +5,7 @@ import com.bank.money.dto.Depositrequest;
 import com.bank.money.dto.P2PTransferRequest;
 import com.bank.money.dto.TransferResponse;
 import com.bank.money.dto.WithdrawRequest;
-import com.bank.money.entity.AccountStatus;
-import com.bank.money.entity.BankAccount;
-import com.bank.money.entity.Transfer;
-import com.bank.money.entity.User;
+import com.bank.money.entity.*;
 import com.bank.money.repository.BankAccountRepository;
 import com.bank.money.repository.TransferRepository;
 import com.bank.money.repository.UserRepository;
@@ -50,7 +47,6 @@ public class TransferService {
         BankAccount to = bankAccountRepository.findById(request.getToAccountId())
                 .orElseThrow(() -> new IllegalArgumentException("Счёт получателя не найден"));
 
-        // Ключевая проверка для этого сценария: ОБА счёта должны принадлежать текущему пользователю
         if (!from.getOwner().getId().equals(currentUser.getId())
                 || !to.getOwner().getId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Перевод разрешён только между своими счетами");
@@ -83,6 +79,7 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setCurrency(from.getCurrency());
         transfer.setDescription(request.getDescription());
+        transfer.setType(TransferType.OWN_TRANSFER);
 
         Transfer saved = transferRepository.save(transfer);
 
@@ -107,12 +104,10 @@ public class TransferService {
             throw new IllegalArgumentException("Нельзя перевести на тот же счёт");
         }
 
-        // Списывать деньги может только владелец счёта-отправителя
         if (!from.getOwner().getId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Вы не являетесь владельцем счёта-отправителя");
         }
 
-        // На этот раз НЕ проверяем, что to принадлежит currentUser — это и есть p2p
         if (to.getOwner().getId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Для перевода себе используйте /api/transfers/own");
         }
@@ -144,6 +139,7 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setCurrency(from.getCurrency());
         transfer.setDescription(request.getDescription());
+        transfer.setType(TransferType.P2P_TRANSFER);
 
         Transfer saved = transferRepository.save(transfer);
 
@@ -184,7 +180,6 @@ public class TransferService {
         BankAccount originalTo = original.getToAccount();
         BigDecimal amount = original.getAmount();
 
-        // debit() сам бросит IllegalStateException, если у получателя не хватает денег на возврат
         originalTo.debit(amount);
         originalFrom.credit(amount);
 
@@ -202,6 +197,7 @@ public class TransferService {
         reversal.setCurrency(original.getCurrency());
         reversal.setDescription("Отмена перевода #" + original.getId());
         reversal.setReversalOf(original);
+        reversal.setType(TransferType.REVERSAL);
 
         Transfer savedReversal = transferRepository.save(reversal);
 
@@ -234,9 +230,6 @@ public class TransferService {
 
         BigDecimal amount = request.getAmount();
 
-        // ВАЖНО: у кассы намеренно НЕТ вызова debit() — она не настоящий кошелёк,
-        // а системный источник денег, ей разрешено уходить в минус.
-        // Именно поэтому баланс меняем напрямую через setBalance, а не через debit().
         cashAccount.setBalance(cashAccount.getBalance().subtract(amount));
         target.credit(amount);
 
@@ -249,6 +242,7 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setCurrency(target.getCurrency());
         transfer.setDescription(request.getDescription() != null ? request.getDescription() : "Пополнение счёта");
+        transfer.setType(TransferType.DEPOSIT);
 
         Transfer saved = transferRepository.save(transfer);
 
@@ -281,8 +275,6 @@ public class TransferService {
 
         BigDecimal amount = request.getAmount();
 
-
-        // debit() сам проверит достаточность средств и бросит исключение при нехватке
         source.debit(amount);
         cashAccount.credit(amount);
 
@@ -295,6 +287,7 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setCurrency(source.getCurrency());
         transfer.setDescription(request.getDescription() != null ? request.getDescription() : "Списание со счёта");
+        transfer.setType(TransferType.WITHDRAWAL);
 
         Transfer saved = transferRepository.save(transfer);
 
@@ -305,7 +298,7 @@ public class TransferService {
     }
 
     @Transactional(readOnly = true)
-    public List<TransferResponse> getAccountHistory(String username, Long accountId) {
+    public List<TransferResponse> getAccountHistory(String username, Long accountId, Instant from, Instant to, TransferType type) {
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
 
@@ -316,10 +309,40 @@ public class TransferService {
             throw new IllegalArgumentException("Это не ваш счёт");
         }
 
-        return transferRepository.findByFromAccountIdOrToAccountIdOrderByCreatedAtDesc(accountId, accountId)
+        validateDateRange(from, to);
+
+        return transferRepository.findAccountHistoryFiltered(accountId, from, to, type)
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransferResponse> getMyHistory(String username, Instant from, Instant to, TransferType type) {
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
+
+        List<Long> accountIds = bankAccountRepository.findByOwner_Id(currentUser.getId())
+                .stream()
+                .map(BankAccount::getId)
+                .collect(Collectors.toList());
+
+        if (accountIds.isEmpty()) {
+            return List.of();
+        }
+
+        validateDateRange(from, to);
+
+        return transferRepository.findMyHistoryFiltered(accountIds, from, to, type)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    private void validateDateRange(Instant from, Instant to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException("Дата начала не может быть позже даты окончания");
+        }
     }
 
     private TransferResponse toResponse(Transfer transfer) {

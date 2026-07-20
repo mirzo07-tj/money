@@ -50,6 +50,10 @@ public class Transfer {
     @JoinColumn(name = "reversal_of_id")
     private Transfer reversalOf;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TransferType type;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = Instant.now();
