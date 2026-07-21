@@ -2,6 +2,8 @@ package com.bank.money.repository;
 
 import com.bank.money.entity.Transfer;
 import com.bank.money.entity.TransferType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,13 +19,13 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND (:from IS NULL OR t.createdAt >= :from)
               AND (:to IS NULL OR t.createdAt <= :to)
               AND (:type IS NULL OR t.type = :type)
-            ORDER BY t.createdAt DESC
             """)
-    List<Transfer> findAccountHistoryFiltered(
+    Page<Transfer> findAccountHistoryFiltered(
             @Param("accountId") Long accountId,
             @Param("from") Instant from,
             @Param("to") Instant to,
-            @Param("type") TransferType type);
+            @Param("type") TransferType type,
+            Pageable pageable);
 
     @Query("""
             SELECT t FROM Transfer t
@@ -31,11 +33,11 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND (:from IS NULL OR t.createdAt >= :from)
               AND (:to IS NULL OR t.createdAt <= :to)
               AND (:type IS NULL OR t.type = :type)
-            ORDER BY t.createdAt DESC
             """)
-    List<Transfer> findMyHistoryFiltered(
+    Page<Transfer> findMyHistoryFiltered(
             @Param("accountIds") List<Long> accountIds,
             @Param("from") Instant from,
             @Param("to") Instant to,
-            @Param("type") TransferType type);
+            @Param("type") TransferType type,
+            Pageable pageable);
 }

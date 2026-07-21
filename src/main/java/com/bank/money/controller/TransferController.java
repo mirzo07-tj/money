@@ -9,6 +9,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +20,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/transfers")
@@ -47,27 +50,29 @@ public class TransferController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "История всех переводов текущего пользователя по всем его счетам, с фильтром по дате и типу")
-    public ResponseEntity<List<TransferResponse>> getMyHistory(
+    @Operation(summary = "История всех переводов текущего пользователя, с фильтром, пагинацией и сортировкой")
+    public ResponseEntity<Page<TransferResponse>> getMyHistory(
             Authentication authentication,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
-            @RequestParam(required = false) TransferType type) {
+            @RequestParam(required = false) TransferType type,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        List<TransferResponse> history = transferService.getMyHistory(authentication.getName(), from, to, type);
+        Page<TransferResponse> history = transferService.getMyHistory(authentication.getName(), from, to, type, pageable);
         return ResponseEntity.ok(history);
     }
 
     @GetMapping("/accounts/{accountId}/history")
-    @Operation(summary = "История переводов по конкретному счёту, с фильтром по дате и типу")
-    public ResponseEntity<List<TransferResponse>> getAccountHistory(
+    @Operation(summary = "История переводов по счёту, с фильтром, пагинацией и сортировкой")
+    public ResponseEntity<Page<TransferResponse>> getAccountHistory(
             @PathVariable Long accountId,
             Authentication authentication,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
-            @RequestParam(required = false) TransferType type) {
+            @RequestParam(required = false) TransferType type,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        List<TransferResponse> history = transferService.getAccountHistory(authentication.getName(), accountId, from, to, type);
+        Page<TransferResponse> history = transferService.getAccountHistory(authentication.getName(), accountId, from, to, type, pageable);
         return ResponseEntity.ok(history);
     }
 }

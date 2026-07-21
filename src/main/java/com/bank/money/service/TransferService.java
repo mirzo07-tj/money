@@ -11,6 +11,8 @@ import com.bank.money.repository.TransferRepository;
 import com.bank.money.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,7 +81,6 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setCurrency(from.getCurrency());
         transfer.setDescription(request.getDescription());
-        transfer.setType(TransferType.OWN_TRANSFER);
 
         Transfer saved = transferRepository.save(transfer);
 
@@ -139,7 +140,6 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setCurrency(from.getCurrency());
         transfer.setDescription(request.getDescription());
-        transfer.setType(TransferType.P2P_TRANSFER);
 
         Transfer saved = transferRepository.save(transfer);
 
@@ -197,7 +197,6 @@ public class TransferService {
         reversal.setCurrency(original.getCurrency());
         reversal.setDescription("Отмена перевода #" + original.getId());
         reversal.setReversalOf(original);
-        reversal.setType(TransferType.REVERSAL);
 
         Transfer savedReversal = transferRepository.save(reversal);
 
@@ -242,7 +241,6 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setCurrency(target.getCurrency());
         transfer.setDescription(request.getDescription() != null ? request.getDescription() : "Пополнение счёта");
-        transfer.setType(TransferType.DEPOSIT);
 
         Transfer saved = transferRepository.save(transfer);
 
@@ -287,7 +285,6 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setCurrency(source.getCurrency());
         transfer.setDescription(request.getDescription() != null ? request.getDescription() : "Списание со счёта");
-        transfer.setType(TransferType.WITHDRAWAL);
 
         Transfer saved = transferRepository.save(transfer);
 
@@ -297,8 +294,32 @@ public class TransferService {
         return toResponse(saved);
     }
 
+    // ===== История: единственные версии, с фильтром + пагинацией + сортировкой =====
+
     @Transactional(readOnly = true)
-    public List<TransferResponse> getAccountHistory(String username, Long accountId, Instant from, Instant to, TransferType type) {
+    public Page<TransferResponse> getMyHistory(String username, Instant from, Instant to,
+                                               TransferType type, Pageable pageable) {
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
+
+        validateDateRange(from, to);
+
+        List<Long> accountIds = bankAccountRepository.findByOwner_Id(currentUser.getId())
+                .stream()
+                .map(BankAccount::getId)
+                .collect(Collectors.toList());
+
+        if (accountIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        return transferRepository.findMyHistoryFiltered(accountIds, from, to, type, pageable)
+                .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TransferResponse> getAccountHistory(String username, Long accountId, Instant from, Instant to,
+                                                    TransferType type, Pageable pageable) {
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
 
@@ -311,32 +332,8 @@ public class TransferService {
 
         validateDateRange(from, to);
 
-        return transferRepository.findAccountHistoryFiltered(accountId, from, to, type)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<TransferResponse> getMyHistory(String username, Instant from, Instant to, TransferType type) {
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
-
-        List<Long> accountIds = bankAccountRepository.findByOwner_Id(currentUser.getId())
-                .stream()
-                .map(BankAccount::getId)
-                .collect(Collectors.toList());
-
-        if (accountIds.isEmpty()) {
-            return List.of();
-        }
-
-        validateDateRange(from, to);
-
-        return transferRepository.findMyHistoryFiltered(accountIds, from, to, type)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return transferRepository.findAccountHistoryFiltered(accountId, from, to, type, pageable)
+                .map(this::toResponse);
     }
 
     private void validateDateRange(Instant from, Instant to) {
