@@ -326,8 +326,8 @@ public class TransferService {
         BankAccount account = bankAccountRepository.findById(accountId)
                 .orElseThrow(() -> new IllegalArgumentException("Счёт не найден"));
 
-        if (!account.getOwner().getId().equals(currentUser.getId())) {
-            throw new IllegalArgumentException("Это не ваш счёт");
+        if (!account.getOwner().getUsername().equals(username)) {
+            throw new org.springframework.security.access.AccessDeniedException("Нет доступа к чужому счёту");
         }
 
         validateDateRange(from, to);

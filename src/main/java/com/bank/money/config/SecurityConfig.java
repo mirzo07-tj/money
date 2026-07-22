@@ -1,5 +1,6 @@
 package com.bank.money.config;
 
+import com.bank.money.security.JwtAccessDeniedHandler;
 import com.bank.money.security.JwtAuthenticationEntryPoint;
 import com.bank.money.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,10 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final UserDetailsService userDetailsService;
+
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {

@@ -1,9 +1,11 @@
 package com.bank.money.service;
 
+import com.bank.money.dto.ChangePasswordRequest;
 import com.bank.money.dto.RegisterRequest;
 import com.bank.money.dto.UserResponse;
 import com.bank.money.entity.Role;
 import com.bank.money.entity.User;
+import com.bank.money.repository.RefreshTokenRepository;
 import com.bank.money.repository.RoleRepository;
 import com.bank.money.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public UserResponse register(RegisterRequest request) {
         log.info("Попытка регистрации пользователя username={}", request.getUsername());
@@ -60,6 +63,27 @@ public class UserService {
                 .collect(Collectors.toSet());
 
         return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getCreatedAt(), roleNames);
+    }
+
+    public void changePassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            log.warn("Неверный текущий пароль при смене пароля username={}", username);
+            throw new IllegalArgumentException("Текущий пароль указан неверно");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Новый пароль должен отличаться от текущего");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        refreshTokenRepository.revokeAllByUser(user);
+
+        log.info("Пароль успешно изменён username={}, все refresh-токены отозваны", username);
     }
 
     public UserResponse updateUserRoles(Long userId, Set<String> roleNames) {

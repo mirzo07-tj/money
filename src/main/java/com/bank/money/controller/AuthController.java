@@ -5,8 +5,10 @@ import com.bank.money.service.AuthService;
 import com.bank.money.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,11 +31,29 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Вход пользователя")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = authService.login(request);
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        String ip = extractIp(httpRequest);
+        LoginResponse response = authService.login(request, ip);
         return ResponseEntity.ok(response);
     }
 
+    private String extractIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    @PutMapping("/change-password")
+    @Operation(summary = "Смена пароля текущего пользователя")
+    public ResponseEntity<Void> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
+
+        userService.changePassword(authentication.getName(), request);
+        return ResponseEntity.noContent().build();
+    }
     @PostMapping("/refresh")
     @Operation(summary = "Обновление access token по refresh token")
     public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
