@@ -45,6 +45,13 @@ public class AuthController {
         return request.getRemoteAddr();
     }
 
+    @PostMapping("/verify-email")
+    @Operation(summary = "Подтверждение email по токену из письма")
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        userService.verifyEmail(request.token());
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/change-password")
     @Operation(summary = "Смена пароля текущего пользователя")
     public ResponseEntity<Void> changePassword(

@@ -3,8 +3,10 @@ package com.bank.money.service;
 import com.bank.money.dto.ChangePasswordRequest;
 import com.bank.money.dto.RegisterRequest;
 import com.bank.money.dto.UserResponse;
+import com.bank.money.entity.EmailVerificationToken;
 import com.bank.money.entity.Role;
 import com.bank.money.entity.User;
+import com.bank.money.repository.EmailVerificationTokenRepository;
 import com.bank.money.repository.RefreshTokenRepository;
 import com.bank.money.repository.RoleRepository;
 import com.bank.money.repository.UserRepository;
@@ -13,6 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,6 +34,8 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final EmailVerificationTokenRepository verificationTokenRepository;
+    private final EmailService emailService;
 
     public UserResponse register(RegisterRequest request) {
         log.info("Попытка регистрации пользователя username={}", request.getUsername());
@@ -50,6 +61,8 @@ public class UserService {
 
         User saved = userRepository.save(user);
         log.info("Пользователь зарегистрирован, id={}, роль=USER", saved.getId());
+
+        sendVerificationToken(saved);
 
         return new UserResponse(saved.getId(), saved.getUsername(), saved.getEmail(), saved.getCreatedAt(), Set.of("USER"));
     }
@@ -105,5 +118,53 @@ public class UserService {
                 .collect(Collectors.toSet());
 
         return new UserResponse(saved.getId(), saved.getUsername(), saved.getEmail(), saved.getCreatedAt(), updatedRoleNames);
+    }
+
+    private void sendVerificationToken(User user) {
+        String rawToken = generateSecureToken();
+        String tokenHash = hashToken(rawToken);
+
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setUser(user);
+        token.setTokenHash(tokenHash);
+        token.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+        verificationTokenRepository.save(token);
+
+        emailService.sendVerificationEmail(user.getEmail(), rawToken);
+
+        log.info("Письмо для подтверждения email отправлено userId={}", user.getId());
+    }
+
+    public void verifyEmail(String rawToken) {
+        String tokenHash = hashToken(rawToken);
+
+        EmailVerificationToken token = verificationTokenRepository
+                .findByTokenHashAndUsedFalseAndExpiresAtAfter(tokenHash, LocalDateTime.now())
+                .orElseThrow(() -> new IllegalArgumentException("Ссылка недействительна или срок её действия истёк"));
+
+        User user = token.getUser();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        token.setUsed(true);
+        verificationTokenRepository.save(token);
+
+        log.info("Email подтверждён userId={}", user.getId());
+    }
+
+    private String generateSecureToken() {
+        byte[] bytes = new byte[32];
+        new SecureRandom().nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String hashToken(String rawToken) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

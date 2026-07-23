@@ -63,6 +63,10 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/api/auth/**",
+                                "/api/auth/verify-email",
+                                "/auth/forgot-password",
+                                "/users/confirm-email-change",
+                                "/auth/reset-password",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()

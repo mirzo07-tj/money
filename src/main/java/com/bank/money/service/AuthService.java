@@ -46,6 +46,11 @@ public class AuthService {
             throw new LockedException("Аккаунт временно заблокирован из-за превышения количества попыток входа. Попробуйте позже.");
         }
 
+        if (user != null && !user.isEmailVerified()) {
+            log.warn("Попытка входа с неподтверждённым email username={}", request.getUsername());
+            throw new LockedException("Email не подтверждён. Проверьте почту и перейдите по ссылке из письма.");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())

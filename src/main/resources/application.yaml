@@ -2,7 +2,6 @@ server:
   port: 8081
 
 #debug: true
-#debug: true
 jwt:
   secret: "ZmFrZS1zZWNyZXQta2V5LWZvci1kZXYtb25seS1jaGFuZ2UtaW4tcHJvZC0xMjM0NTY3ODkw"
   expiration-ms: 900000
@@ -21,6 +20,22 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+app:
+  reset-password:
+    token-ttl-minutes: 30
+    frontend-url: http://localhost:3000/reset-password
 
 logging:
   level:
