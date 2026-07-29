@@ -8,18 +8,30 @@ jwt:
   refresh-expiration-ms: 604800000
 
 spring:
+  # 1. Задаем базового пользователя для Spring Security, чтобы убрать ошибку в консоли
+  security:
+    user:
+      name: admin
+      password: 1234tj02 # Замените на любой свой пароль для тестов
+
   datasource:
     url: jdbc:postgresql://localhost:5555/money
     username: postgres
     password: 2552
     driver-class-name: org.postgresql.Driver
+
   jpa:
+    # 2. Отключаем Open-In-View для лучшей производительности
+    open-in-view: false
     hibernate:
       ddl-auto: validate   # Flyway управляет схемой, Hibernate только проверяет
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # 3. Строку dialect: org.hibernate.dialect.PostgreSQLDialect мы УДАЛИЛИ,
+        # так как Hibernate определит всё сам автоматически.
+        format_sql: true # Добавил бонусом — делает вывод SQL в консоль красивым
     show-sql: true
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -48,3 +60,53 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/money-app.log
+#server:
+#  port: 8081
+#
+##debug: true
+#jwt:
+#  secret: "ZmFrZS1zZWNyZXQta2V5LWZvci1kZXYtb25seS1jaGFuZ2UtaW4tcHJvZC0xMjM0NTY3ODkw"
+#  expiration-ms: 900000
+#  refresh-expiration-ms: 604800000
+#
+#spring:
+#  datasource:
+#    url: jdbc:postgresql://localhost:5555/money
+#    username: postgres
+#    password: 2552
+#    driver-class-name: org.postgresql.Driver
+#  jpa:
+#    hibernate:
+#      ddl-auto: validate   # Flyway управляет схемой, Hibernate только проверяет
+#    properties:
+#      hibernate:
+#        dialect: org.hibernate.dialect.PostgreSQLDialect
+#    show-sql: true
+#  mail:
+#    host: smtp.gmail.com
+#    port: 587
+#    username: ${MAIL_USERNAME}
+#    password: ${MAIL_PASSWORD}
+#    properties:
+#      mail:
+#        smtp:
+#          auth: true
+#          starttls:
+#            enable: true
+#
+#app:
+#  reset-password:
+#    token-ttl-minutes: 30
+#    frontend-url: http://localhost:3000/reset-password
+#
+#logging:
+#  level:
+#    root: INFO
+#    com.bank.money: DEBUG
+#    org.hibernate: WARN
+#    org.springframework: WARN
+#    org.springframework.security: DEBUG
+#  pattern:
+#    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+#  file:
+#    name: logs/money-app.log
