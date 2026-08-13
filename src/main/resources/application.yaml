@@ -12,7 +12,7 @@ spring:
   security:
     user:
       name: admin
-      password: 1234tj02 # Замените на любой свой пароль для тестов
+      password: 1234tj02
 
   datasource:
     url: jdbc:postgresql://localhost:5555/money
